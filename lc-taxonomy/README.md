@@ -12,8 +12,11 @@ The App kit containers have to be part of this network (aside of their own netwo
 example to run the docker container:
 
 ### live taxonomy
+```
 ./compose_localcosmos_taxonomy.sh -c --taxonomy-network 172.20.250.0/24 --port 15432 --identifier live --password yourpassword
+```
 
 ### testing taxonomy
+```
 ./compose_localcosmos_taxonomy.sh -c --taxonomy-network 172.20.250.0/24 --port 25432 --identifier testing --password yourpassword
-
+```
