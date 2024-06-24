@@ -1,0 +1,23 @@
+services:
+  taxonomy-database:
+    image: localcosmos/lc-taxonomy
+    container_name: $CONTAINER_BASENAME$CD_IDENTIFIER
+    restart: always
+    networks:
+      - lc-taxonomy-network
+    ports:
+      - "$DB_PORT_EXTERNAL:5432"
+    environment:
+      - POSTGRES_USER=linnaeus
+      - POSTGRES_PASSWORD=$DB_PASSWORD
+      - POSTGRES_DB=taxonomy
+    volumes:
+      - "taxonomy_data:/var/lib/postgresql/data"
+
+volumes:
+  taxonomy_data:
+
+networks:
+  lc-taxonomy-network:
+    name: lc-taxonomy-network
+    external: true

@@ -1,0 +1,78 @@
+services:
+  lc-appkit:
+    image: localcosmos/lc-appkit
+    restart: always
+    depends_on:
+      lc-database:
+        condition: service_healthy
+      migration:
+        condition: service_completed_successfully
+    external_links:
+      - lc-taxonomy-database$TAXON_DB:taxonomy-database
+    volumes:
+      - "www:/var/www/localcosmos"
+      - "private_frontends:/opt/localcosmos_frontends"
+      - "apps:/opt/apps"
+      - type: bind
+        source: /opt/localcosmos/certificates
+        target: /opt/localcosmos/certificates
+    networks:
+      - lc-network
+      - lc-taxonomy-network
+    env_file:
+      - path: ./django_settings.env
+        required: true
+    ports:
+      - "$LC_PORTS_ON_HOST:8000"
+
+  lc-database:
+    image: localcosmos/lc-database
+    container_name: lc-database$CD_IDENTIFIER
+    restart: always
+    expose:
+      - '5432'
+    volumes:
+      - "database_log:/var/log/postgresql"
+      - "database_data:/var/lib/postgresql/data"
+    networks:
+      - lc-network
+    environment:
+      - POSTGRES_USER=$POSTGRES_USER
+      - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+      - POSTGRES_DB=localcosmos
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  migration:
+    image: localcosmos/lc-appkit
+    container_name: lc-migration$CD_IDENTIFIER
+    entrypoint: sh -c "python manage.py migrate --noinput && python manage.py collectstatic --noinput"
+    depends_on:
+      lc-database:
+        condition: service_healthy
+    volumes:
+      - "www:/var/www/localcosmos"
+    networks:
+      - lc-network
+    env_file:
+      - path: ./django_settings.env
+        required: true
+
+volumes:
+  database_log:
+  database_data:
+  www:
+  apps:
+  private_frontends:
+
+networks:
+  lc-network:
+    ipam:
+      driver: default
+      config:
+        - subnet: $LOCALCOSMOS_NETWORK
+  lc-taxonomy-network:
+    external: true
