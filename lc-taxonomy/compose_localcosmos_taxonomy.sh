@@ -72,7 +72,7 @@ ymlContent=`sed -e 's#$DB_PASSWORD#'$DB_PASSWORD'#g' \
     docker-compose.yml`
 
 
-echo "$ymlContent" | docker-compose -f - -p ${CONTAINER_BASENAME}${CD_IDENTIFIER} up -d
+echo "$ymlContent" | docker compose -f - -p ${CONTAINER_BASENAME}${CD_IDENTIFIER} up -d
 rc=$?; 
 
 if [[ $rc != 0 ]]; then

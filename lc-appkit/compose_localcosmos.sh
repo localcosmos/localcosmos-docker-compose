@@ -229,7 +229,7 @@ if [[ $DELETE_DATA == true ]] || [[ $CLONE_LIVE_DATA == true ]]; then
   docker network rm ${DOCKER_PROJECTNAME}_lc-network
 fi
 
-# Clone the data if requested. We cannot do this after docker-compose created the volumes itself
+# Clone the data if requested. We cannot do this after docker compose created the volumes itself
 # because the database would not work then.
 # This creates a warning: "Use `external: true` to use an existing volume"
 # A solution without a warning would be preferred
@@ -261,7 +261,7 @@ DATABASE_CONTAINER_ID=$(docker ps -f name=$DATABASE_CONTAINER_NAME -q | head -n1
 if  [[ -z "$DATABASE_CONTAINER_ID" ]]; then
   echo -e "\nNo database container found, starting it"
   ymlContent=$(create_docker_compose_yaml)
-  echo "$ymlContent" | docker-compose -f - --project-name ${DOCKER_PROJECTNAME} up -d --no-deps --no-recreate lc-database
+  echo "$ymlContent" | docker compose -f - --project-name ${DOCKER_PROJECTNAME} up -d --no-deps --no-recreate lc-database
 fi
 
 DATABASE_CONTAINER_ID=$(docker ps -f name=$DATABASE_CONTAINER_NAME -q | head -n1)
@@ -293,7 +293,7 @@ migrate () {
   else
     echo "Migrating"
     ymlContent=$(create_docker_compose_yaml)
-    echo "$ymlContent" | docker-compose -f - --project-name ${DOCKER_PROJECTNAME} up -d --no-deps --no-recreate migration
+    echo "$ymlContent" | docker compose -f - --project-name ${DOCKER_PROJECTNAME} up -d --no-deps --no-recreate migration
     # wait for the container to finish
     counter=0
     timeout=120
@@ -347,8 +347,8 @@ scale_appkit_container () {
   # create the folder for the uwsgi socket if it doesn ot exist
   echo "Start up the localcosmos environment $SERVICE_NAME"
   ymlContent=$(create_docker_compose_yaml)
-  echo "$ymlContent" | docker-compose -f - --project-name ${DOCKER_PROJECTNAME} up -d --no-deps --scale ${SERVICE_NAME}=2 --no-recreate ${SERVICE_NAME}
-  echo "$ymlContent" | docker-compose -f - --project-name ${DOCKER_PROJECTNAME} up -d --no-deps --scale ${SERVICE_NAME}=2 --no-recreate ${SERVICE_NAME}
+  echo "$ymlContent" | docker compose -f - --project-name ${DOCKER_PROJECTNAME} up -d --no-deps --scale ${SERVICE_NAME}=2 --no-recreate ${SERVICE_NAME}
+  echo "$ymlContent" | docker compose -f - --project-name ${DOCKER_PROJECTNAME} up -d --no-deps --scale ${SERVICE_NAME}=2 --no-recreate ${SERVICE_NAME}
 }
 
 deploy_localcosmos () {
@@ -417,7 +417,7 @@ deploy_localcosmos () {
     echo "Stopping container $CONTAINER_1_ID"
     stop_appkit_container $CONTAINER_1_ID
     # start container_1
-    #docker-compose up -d --no-deps --scale $SERVICE_NAME=2 --no-recreate $SERVICE_NAME
+    #docker compose up -d --no-deps --scale $SERVICE_NAME=2 --no-recreate $SERVICE_NAME
     echo "Scaling app-kit service"
     scale_appkit_container $SERVICE_NAME
 
