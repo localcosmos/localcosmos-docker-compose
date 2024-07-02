@@ -235,21 +235,17 @@ fi
 # A solution without a warning would be preferred
 # https://github.com/gdiepen/docker-convenience-scripts
 
-if [[ $CLONE_LIVE_DATA == true ]];
-then
-  if [[ $CD_IDENTIFIER == '-staging' ]];
-  then
-    # clone the 2 database volumes
-    echo "Cloning live named volumes of the database"
-    source ./docker_clone_volume.sh ${PROJECT_NAME}live_database_log ${DOCKER_PROJECTNAME}_database_log
-    source ./docker_clone_volume.sh ${PROJECT_NAME}live_database_data ${DOCKER_PROJECTNAME}_database_data
-  
-    # clone the 2 appkit volumes
-    echo "Cloning live named volumes of the web container"
-    source ./docker_clone_volume.sh ${PROJECT_NAME}live_www ${DOCKER_PROJECTNAME}_www
-    source ./docker_clone_volume.sh ${PROJECT_NAME}live_apps ${DOCKER_PROJECTNAME}_apps
-    source ./docker_clone_volume.sh ${PROJECT_NAME}live_private_frontends ${DOCKER_PROJECTNAME}_private_frontends
-  fi
+if [[ $CLONE_LIVE_DATA == true && $CD_IDENTIFIER == '-staging' ]]; then
+  # clone the 2 database volumes
+  echo "Cloning live named volumes of the database"
+  source ./docker_clone_volume.sh ${PROJECT_NAME}live_database_log ${DOCKER_PROJECTNAME}_database_log
+  source ./docker_clone_volume.sh ${PROJECT_NAME}live_database_data ${DOCKER_PROJECTNAME}_database_data
+
+  # clone the 2 appkit volumes
+  echo "Cloning live named volumes of the web container"
+  source ./docker_clone_volume.sh ${PROJECT_NAME}live_www ${DOCKER_PROJECTNAME}_www
+  source ./docker_clone_volume.sh ${PROJECT_NAME}live_apps ${DOCKER_PROJECTNAME}_apps
+  source ./docker_clone_volume.sh ${PROJECT_NAME}live_private_frontends ${DOCKER_PROJECTNAME}_private_frontends
 fi
 
 #### STARTING THE DATABASE
@@ -351,6 +347,18 @@ scale_appkit_container () {
   echo "$ymlContent" | docker compose -f - --project-name ${DOCKER_PROJECTNAME} up -d --no-deps --scale ${SERVICE_NAME}=2 --no-recreate ${SERVICE_NAME}
 }
 
+
+fix_staging_domains () {
+
+  STAGING_CONTAINER_ID=$1
+
+  if [[ $CLONE_LIVE_DATA == true && $CD_IDENTIFIER == '-staging' ]]; then
+    echo "Fixing domains for staging"
+    # Fix all Domains for staging
+    docker exec $STAGING_CONTAINER_ID python3 /opt/localcosmos/manage.py tenant_command fix_staging_domains --schema=public
+  fi
+}
+
 deploy_localcosmos () {
 
   SERVICE_NAME=lc-appkit
@@ -391,7 +399,7 @@ deploy_localcosmos () {
     fi
 
     if [[ "$CONTAINER_2_NEW_ID" == "$CONTAINER_1_ID" ]]; then
-      echo "Did not fin ID for second container"
+      echo "Did not find ID for second container"
       exit 1;
     fi
 
@@ -420,7 +428,12 @@ deploy_localcosmos () {
     #docker compose up -d --no-deps --scale $SERVICE_NAME=2 --no-recreate $SERVICE_NAME
     echo "Scaling app-kit service"
     scale_appkit_container $SERVICE_NAME
+  fi
 
+  # fix staging domains
+  if [[ $CLONE_LIVE_DATA == true && $CD_IDENTIFIER == '-staging' ]]; then
+    STAGING_CONTAINER_ID=$(docker ps -f name=$CONTAINER_BASENAME -q | tail -n1)
+    fix_staging_domains $STAGING_CONTAINER_ID
   fi
 
   echo "Done."
@@ -428,7 +441,15 @@ deploy_localcosmos () {
 
 deploy_localcosmos
 
-echo "Removing dangling docker containers"
-docker rm $(docker ps -a -f status=exited -f status=created -q)
+echo "Removing dangling docker containers, if any"
+# Get the list of dangling containers
+dangling_containers=$(docker ps -a -f status=exited -f status=created -q)
+
+# Check if the list is non-empty
+if [ -n "$dangling_containers" ]; then
+  docker rm $dangling_containers
+else
+  echo "No dangling containers to remove"
+fi
 
 exit $?
