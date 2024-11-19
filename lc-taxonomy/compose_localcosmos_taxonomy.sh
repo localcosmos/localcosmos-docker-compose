@@ -7,6 +7,7 @@ CD_IDENTIFIER=-live
 DB_PORT_EXTERNAL=15432
 # It is required to ste the password using --password
 DB_PASSWORD=password
+TEMP_YAML_FILE="localcosmos-taxonomy-docker-compose.yml"
 
 CLEAR=false
 
@@ -43,6 +44,16 @@ while getopts "$optspec" optchar; do
   esac
 done
 
+clean_temporary_files () {
+  if [ -n "$TEMP_YAML_FILE" ]; then
+    if [[ -f $TEMP_YAML_FILE ]]; then
+      echo "File exists at $TEMP_YAML_FILE. Removing"
+      rm -f "$TEMP_YAML_FILE"
+    fi
+  fi
+
+}
+
 if [[ "$DB_PASSWORD" == "password" ]]; then
   echo -e "\nERROR: You have to set a valid --db-password"
   exit 1
@@ -63,16 +74,19 @@ if [[ $CLEAR == true ]]; then
   docker rm -v ${CONTAINER_BASENAME}${CD_IDENTIFIER} 2>/dev/null || true
 fi
 
+clean_temporary_files
+
 # Replace variables in docker-compose.yml and start up the new database
-ymlContent=`sed -e 's#$DB_PASSWORD#'$DB_PASSWORD'#g' \
+ymlContent=$(sed -e 's#$DB_PASSWORD#'$DB_PASSWORD'#g' \
     -e 's#$DB_PORT_EXTERNAL#'$DB_PORT_EXTERNAL'#g' \
     -e 's#$CONTAINER_BASENAME#'$CONTAINER_BASENAME'#g' \
     -e 's#$CD_IDENTIFIER#'$CD_IDENTIFIER'#g' \
     -e 's#$TAXONOMY_NETWORK#'$TAXONOMY_NETWORK'#g' \
-    docker-compose.yml`
+    docker-compose.yml)
 
+echo "$ymlContent" > "$TEMP_YAML_FILE"
 
-echo "$ymlContent" | docker compose -f - -p ${CONTAINER_BASENAME}${CD_IDENTIFIER} up -d
+docker compose -f "$TEMP_YAML_FILE" -p ${CONTAINER_BASENAME}${CD_IDENTIFIER} up -d
 rc=$?; 
 
 if [[ $rc != 0 ]]; then

@@ -17,6 +17,7 @@ CLONE_LIVE_DATA=false
 REBUILD_DATABASE_CONTAINER=false
 POSTGRES_USER=user
 POSTGRES_PASSWORD=password
+TEMP_YAML_FILE="localcosmos-appkit-docker-compose.yml"
 
 # Function to print usage information
 usage() {
@@ -141,16 +142,34 @@ fi
 # create a yaml file with appropriate parameters
 create_docker_compose_yaml () {
 
+  echo -e "\nCreating YAML content"
+
+  clean_temporary_files
+
   # Create the yml file, replace with passed arguments
-  local ymlContent=`sed -e 's#$CD_IDENTIFIER#'$CD_IDENTIFIER'#g' \
+  local ymlContent=$(sed -e 's#$CD_IDENTIFIER#'$CD_IDENTIFIER'#g' \
     -e 's#$LC_PORTS_ON_HOST#'$LC_PORTS_ON_HOST'#g' \
     -e 's#$LOCALCOSMOS_NETWORK#'$LOCALCOSMOS_NETWORK'#g' \
     -e 's#$TAXON_DB#'$TAXON_DB'#g' \
     -e 's#$POSTGRES_USER#'$POSTGRES_USER'#g' \
     -e 's#$POSTGRES_PASSWORD#'$POSTGRES_PASSWORD'#g' \
-    docker-compose.yml`
+    docker-compose.yml)
 
-  echo "$ymlContent"
+  # Save to a temporary file
+  echo "$ymlContent" > "$TEMP_YAML_FILE"
+
+  echo "Temporary YAML file created at: $TEMP_YAML_FILE"
+
+}
+
+clean_temporary_files () {
+  if [ -n "$TEMP_YAML_FILE" ]; then
+    if [[ -f $TEMP_YAML_FILE ]]; then
+      echo "File exists at $TEMP_YAML_FILE. Removing"
+      rm -f "$TEMP_YAML_FILE"
+    fi
+  fi
+
 }
 
 wait_for_container () {
@@ -256,8 +275,8 @@ DATABASE_CONTAINER_ID=$(docker ps -f name=$DATABASE_CONTAINER_NAME -q | head -n1
 
 if  [[ -z "$DATABASE_CONTAINER_ID" ]]; then
   echo -e "\nNo database container found, starting it"
-  ymlContent=$(create_docker_compose_yaml)
-  echo "$ymlContent" | docker compose -f - --project-name ${DOCKER_PROJECTNAME} up -d --no-deps --no-recreate lc-database
+  create_docker_compose_yaml
+  docker compose -f "$TEMP_YAML_FILE" --project-name ${DOCKER_PROJECTNAME} up -d --no-deps --no-recreate lc-database
 fi
 
 DATABASE_CONTAINER_ID=$(docker ps -f name=$DATABASE_CONTAINER_NAME -q | head -n1)
@@ -288,8 +307,8 @@ migrate () {
     fi
   else
     echo "Migrating"
-    ymlContent=$(create_docker_compose_yaml)
-    echo "$ymlContent" | docker compose -f - --project-name ${DOCKER_PROJECTNAME} up -d --no-deps --no-recreate migration
+    create_docker_compose_yaml
+    docker compose -f "$TEMP_YAML_FILE" --project-name ${DOCKER_PROJECTNAME} up -d --no-deps --no-recreate migration
     # wait for the container to finish
     counter=0
     timeout=120
@@ -342,9 +361,9 @@ scale_appkit_container () {
   SERVICE_NAME=$1
   # create the folder for the uwsgi socket if it doesn ot exist
   echo "Start up the localcosmos environment $SERVICE_NAME"
-  ymlContent=$(create_docker_compose_yaml)
-  echo "$ymlContent" | docker compose -f - --project-name ${DOCKER_PROJECTNAME} up -d --no-deps --scale ${SERVICE_NAME}=2 --no-recreate ${SERVICE_NAME}
-  echo "$ymlContent" | docker compose -f - --project-name ${DOCKER_PROJECTNAME} up -d --no-deps --scale ${SERVICE_NAME}=2 --no-recreate ${SERVICE_NAME}
+  create_docker_compose_yaml
+  docker compose -f "$TEMP_YAML_FILE" --project-name ${DOCKER_PROJECTNAME} up -d --no-deps --scale ${SERVICE_NAME}=2 --no-recreate ${SERVICE_NAME}
+  docker compose -f "$TEMP_YAML_FILE" --project-name ${DOCKER_PROJECTNAME} up -d --no-deps --scale ${SERVICE_NAME}=2 --no-recreate ${SERVICE_NAME}
 }
 
 
