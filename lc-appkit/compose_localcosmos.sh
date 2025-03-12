@@ -215,6 +215,12 @@ echo -e "\nDocker project name: $DOCKER_PROJECTNAME"
 
 
 if [[ $DELETE_DATA == true ]] || [[ $CLONE_LIVE_DATA == true ]]; then
+
+  if [[ $CD_IDENTIFIER == '-live' ]]; then
+    echo -e "\nDeleting volumes for $CD_IDENTIFIER is not supported."
+    exit 1;
+  fi
+
   # Remove any existing database container
   docker stop lc-database$CD_IDENTIFIER ; docker rm -v lc-database$CD_IDENTIFIER
 
